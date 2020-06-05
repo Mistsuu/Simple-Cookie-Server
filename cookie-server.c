@@ -17,10 +17,13 @@
 #define MAXCONN 30
 #define BUFSIZE 1024
 
+/* Socket data */
 int port;
 int listenfd;
 int serverfds[MAXCONN];
 char buf[BUFSIZE];
+/* Cookie map */
+map cookie_map;
 
 char http_request_header[] = {
     "HTTP/2.0 200 OK\n\rContent-Type: text/html\n\r"
@@ -66,30 +69,50 @@ int setup() {
     return 0;
 }
 
-void receive_from_server(int i) {
+void close_connection(int i, int forced=0) {
+    // If not forced, close willingly
+    if (!forced) {
+        shutdown(serverfds[i], SHUT_RDWR);
+        char c; while(read(serverfds[i], &c, 1) >= 0);
+    }
+
+    // Close socket
+    close(serverfds[i]);
+    serverfds[i] = 0;
+}
+
+int header_match(char* buf) {
+    int p = 0;
+    for (; p < strlen(http_request_header); ++p)
+        if (http_request_header[p] != buf[p])
+            return -1;
+    return p;
+}
+
+void handle_request(int server_no, char* buf, int beg) {
+    if
+}
+
+void receive_from_server(int server_no) {
     // Abruptedly exit
-    if (read(serverfds[i], buf, BUFSIZE) <= 0) {
+    if (read(serverfds[server_no], buf, BUFSIZE) <= 0) {
         printf("[!] Server abruptedly exit. Doesn't know why...\n");
-        close(serverfds[i]);
-        serverfds[i] = 0;
+        close_connection(server_no, 1);
         return;
     }
 
-    for (int i = 0; i < BUFSIZE; ++i) {
-        if (i < strlen(http_request_header) && buf[i] != http_request_header[i]) {
-            write(serverfds[i], "Invalid request.", 17);
-            break;
-        }
-        else {
-
-        }
+    // Check string header...
+    int p;
+    if ((p = header_match(buf)) == -1) {
+        printf("[!] Invalid request header!]\n");
+        close_connection(server_no);
     }
 
+    // Handle request from server
+    handle_request(server_no, buf, p);
+
     // Properly exit
-    shutdown(serverfds[i], SHUT_RDWR);
-    char c; while(read(serverfds[i], &c, 1) >= 0);
-    close(serverfds[i]);
-    serverfds[i] = 0;
+    close_connection(server_no);
 }
 
 void handle_new_connection() {
