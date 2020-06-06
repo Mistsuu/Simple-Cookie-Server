@@ -115,6 +115,7 @@ void handle_request(int sockfd) {
         }
     }
     /* Get */
+    /* Format: GET <key>; */
     else {
         printf("[] GET request\n");
         char key[SIZE], value[SIZE];
