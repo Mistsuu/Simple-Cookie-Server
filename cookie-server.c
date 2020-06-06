@@ -22,11 +22,10 @@ struct sockaddr_in saddr;
 /* Cookie map */
 map cookie_map;
 
-char http_request_header    [] = "HTTP/2.0 200 OK\n\rContent-Type: text/html\n\r";
-char invalid_request_message[] = "Invalid Request!\n";
-char good_job_message       [] = "Good job babe!\n";
+char KEYNOTFOUND_MESSAGE[] = "Key not found";
+char INVALIDREQ_MESSAGE[]  = "Invalid request";
 
-int setup() {
+int init_server() {
     ///////////////////////////////// COOKIE ///////////////////////////////////
 
     // Create socket
@@ -66,30 +65,49 @@ int setup() {
     return 0;
 }
 
-void close_connection(int server_no) {
-    // Close socket
-    close(serverfds[server_no]);
-    serverfds[server_no] = 0;
-}
+void handle_request(int sockfd) {
+    // Receive data
+    char buf[SIZE];
+    memset(buf, 0, SIZE);
+    if (read(sockfd, buf, SIZE) <= 0) {
+        printf("[] HTTP Server disconnected.\n");
+        return;
+    }
 
-#define response(server_no, response_message) write(serverfds[server_no], response_message, sizeof(response_message))
+    // Check for instruction
+    if (!((buf[0] == 'S' || buf[0] == 'G') && buf[1] == 'E' && buf[2] == 'T')) {
+        write(sockfd, INVALIDREQ_MESSAGE, sizeof(INVALIDREQ_MESSAGE));
+        return;
+    }
 
-void handle_request(int server_no, char* buf) {
-    // char *header, *key, *value;
-    // if ((header = strtok(buf, http_request_header)) == NULL) {
-    //     write(serverfds[server_no], invalid_request_message, sizeof(invalid_request_message));
-    //     return;
-    // }
-    response(server_no, good_job_message);
-}
+    // Execute instruction
+    /* Set */
+    if (buf[0] == 'S') {
+        int sKey = 4, eKey, sValue, eValue;
 
-void receive_from_server(int server_no) {
-    // Can't receive
-    if (read(serverfds[server_no], buf, BUFSIZE) <= 0) printf("[!] Server abruptedly exit. Doesn't know why...\n");
-    // Handle request from server
-    else                                               handle_request(server_no, buf);
-    // Exit
-    close_connection(server_no);
+        while (sKey < SIZE && eKey < SIZE && sValue < SIZE && eValue < SIZE) {
+
+            while (sKey < SIZE && buf[sKey] == ' ' && buf[sKey] == ';')
+                sKey++;
+            eKey = sKey;
+            while (eKey < SIZE && buf[eKey] != '=' && buf[eKey] != ' ')
+                eKey++;
+            sValue = eKey;
+            while (sValue < SIZE && (buf[sValue] == '=' || buf[sValue] == ' '))
+                sValue++;
+            eValue = sValue;
+            while (eValue < SIZE && buf[eValue] == ';' && buf[eValue] == ' ')
+                eValue++;
+            sKey = eValue;
+
+        }
+
+        substr
+    }
+    /* Get */
+    else {
+        int sSet = 4, eSet;
+    }
 }
 
 void handle_new_connection() {
@@ -99,11 +117,12 @@ void handle_new_connection() {
     else for (int i = 0; i < MAXCONN; ++i)
         if (serverfds[i] == 0) {
             serverfds[i] = newsockfd;
+            printf("[] New HTTP Server connected!\n");
             return;
         }
 }
 
-void run_cookie_server() {
+void run_server() {
     fd_set readfds;
     int    maxfd;
 
@@ -128,14 +147,22 @@ void run_cookie_server() {
 
         ///// Server says something....
         for (int i = 0; i < MAXCONN; ++i)
-            if (FD_ISSET(serverfds[i], &readfds))
-                receive_from_server(i);
+            if (serverfds[i] > 0 && FD_ISSET(serverfds[i], &readfds)) {
+                // Handle request from server
+                handle_request(serverfds[i]);
+
+                // Close connection...
+                close(serverfds[i]);
+                serverfds[i] = 0;
+            }
     }
 }
 
 int main(int argc, char** argv) {
-    if (setup() < 0)
+    init_map(&cookie_map);
+
+    if (init_server() < 0)
         return -1;
 
-    run_cookie_server();
+    run_server();
 }
