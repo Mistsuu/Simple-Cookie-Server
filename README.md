@@ -7,12 +7,12 @@ Cookie Server for Network Programming Final...
 <b>GET</b> ```GET <key>;                                                    # <- Also ends with ; (JUST 1 KEY GET AT A TIME!!)```
 
 # Running... But how?
-1. You connect me.\
-2. You send me request.\
-3. I do your request.\
+<b>1</b>. You connect me.
+<b>2</b>. You send me request.
+<b>3</b>. I do your request.
 	
-	SET: I do your thing, nothing sends back to you, then close connection.\
-	GET: I help you get your value, sends you the value, then close connection.\
+	<b>SET</b>: I do your thing, nothing sends back to you, then close connection.
+	<b>GET</b>: I help you get your value, sends you the value, then close connection.
 
-4. Any question?\
+<b>4</b>. Any question?
 
