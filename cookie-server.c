@@ -7,7 +7,8 @@
 #include <sys/time.h>     // FD_SET(), FD_ISSET(), FD_ZERO(), FD_CLR()
 #include <stdlib.h>       // atoi()
 #include <sys/select.h>   // select()
-#include "map.h"
+#include <ctype.h>        // isprint()
+#include "storage.h"
 
 #define PORT 8784
 #define MAXCONN 30
@@ -19,8 +20,6 @@ int serverfds[MAXCONN];
 char buf[BUFSIZE];
 socklen_t slen = sizeof(struct sockaddr_in);
 struct sockaddr_in saddr;
-/* Cookie map */
-map cookie_map;
 
 char KEYNOTFOUND_MESSAGE[] = "Key not found";
 char INVALIDREQ_MESSAGE[]  = "Invalid request";
@@ -82,31 +81,61 @@ void handle_request(int sockfd) {
 
     // Execute instruction
     /* Set */
+    /* Format: SET <key0>=<value0>; <key1>=<value1>; ... */
     if (buf[0] == 'S') {
-        int sKey = 4, eKey, sValue, eValue;
+        printf("[] SET request\n");
+        char key[SIZE], value[SIZE];
+        int l = 4, r;
+        int stage = 0;
+        while (1) {
+            // Get end-pos and copy string...
+            r = l;
+            while (r < SIZE && ((buf[r] != '=' && stage == 0) || (buf[r] != ';' && stage == 1)))
+                r++;
+            if      (stage == 0) memset(key,   0, SIZE), memcpy(key,   buf + l, r - l);
+            else if (stage == 1) memset(value, 0, SIZE), memcpy(value, buf + l, r - l);
 
-        while (sKey < SIZE && eKey < SIZE && sValue < SIZE && eValue < SIZE) {
+            // Set value to key & write to file in case of shutdown...
+            if (stage == 1)
+                set(key, value),
+                printf("[] SET success for (%s=%s)!\n", key, value);
 
-            while (sKey < SIZE && buf[sKey] == ' ' && buf[sKey] == ';')
-                sKey++;
-            eKey = sKey;
-            while (eKey < SIZE && buf[eKey] != '=' && buf[eKey] != ' ')
-                eKey++;
-            sValue = eKey;
-            while (sValue < SIZE && (buf[sValue] == '=' || buf[sValue] == ' '))
-                sValue++;
-            eValue = sValue;
-            while (eValue < SIZE && buf[eValue] == ';' && buf[eValue] == ' ')
-                eValue++;
-            sKey = eValue;
+            // Go to next stage...
+            stage = (stage + 1) % 2;
 
+            // Get begin-pos for next...
+            l = r;
+            while (l < SIZE && (buf[l] == '=' || buf[l] == ';' || buf[l] == ' ')) {
+                if (buf[l] == ';') {
+                    if (l + 1 < SIZE && (buf[l + 1] == '\n' || !isprint(buf[l + 1])) ) return;
+                    else if (l + 1 == SIZE) return;
+                }
+                l++;
+            }
         }
-
-        substr
     }
     /* Get */
     else {
-        int sSet = 4, eSet;
+        printf("[] GET request\n");
+        char key[SIZE], value[SIZE];
+
+        // Get key
+        int l = 4, r = 4;
+        while (r < SIZE && buf[r] != ';' && buf[r] != '\0' && buf[r] != '\n')
+            r++;
+        memset(key, 0, SIZE); memcpy(key, buf + l, r - l);
+
+        // Get value
+        printf("[] Get value of key \'%s\':\n", key);
+        memset(value, 0, SIZE);
+        get(key, value);
+        if (strlen(value) != 0) {
+            printf("[] GET request success! Key value: \'%s\'\n", value),
+            write(sockfd, value, SIZE);
+            return;
+        }
+
+        printf("[] GET request ERROR: not found.\n");
     }
 }
 
@@ -159,8 +188,6 @@ void run_server() {
 }
 
 int main(int argc, char** argv) {
-    init_map(&cookie_map);
-
     if (init_server() < 0)
         return -1;
 
