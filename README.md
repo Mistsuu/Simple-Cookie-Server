@@ -11,8 +11,8 @@ Cookie Server for Network Programming Final...
 <b>2</b>. You send me request.
 <b>3</b>. I do your request.
 	
-	<b>SET</b>: I do your thing, nothing sends back to you, then close connection.
-	<b>GET</b>: I help you get your value, sends you the value, then close connection.
+	SET: I do your thing, nothing sends back to you, then close connection.
+	GET: I help you get your value, sends you the value, then close connection.
 
 <b>4</b>. Any question?
 
