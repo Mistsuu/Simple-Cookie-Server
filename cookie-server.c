@@ -88,6 +88,7 @@ void handle_request(int sockfd) {
         int l = 4, r;
         int stage = 0;
         while (1) {
+
             // Get end-pos and copy string...
             r = l;
             while (r < SIZE && ((buf[r] != '=' && stage == 0) || (buf[r] != ';' && stage == 1)))
@@ -98,7 +99,7 @@ void handle_request(int sockfd) {
             // Set value to key & write to file in case of shutdown...
             if (stage == 1)
                 set(key, value),
-                printf("[] SET success for (%s=%s)!\n", key, value);
+                printf("[] SET (%s=%s)!\n", key, value);
 
             // Go to next stage...
             stage = (stage + 1) % 2;
